@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #09090b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* JFK palette, pulled from jfkairport.com computed styles */
+  --color-navy: #011565;
+  --color-navy-light: #0a2a8a;
+  --color-slate-muted: #475569;
+  --color-cta: #0045ff;
+  --color-surface: #f4f7fb;
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-archivo);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
