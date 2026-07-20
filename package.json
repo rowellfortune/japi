@@ -1,0 +1,15 @@
+{
+  "name": "japi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Johann Adolf Pengel Airport chatbot — SST v4 monorepo",
+  "scripts": {
+    "dev": "sst dev",
+    "deploy": "sst deploy",
+    "remove": "sst remove"
+  },
+  "devDependencies": {
+    "sst": "^4.17.1"
+  }
+}

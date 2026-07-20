@@ -28,26 +28,78 @@ export class ChatGPTService {
     const tagMatch = message.match(TAG_RE);
     const gateMatch = message.match(GATE_RE);
     const exclude = new Set(
-      [tagMatch?.[1], gateMatch?.[1]].filter((v): v is string => !!v).map((v) => v.toUpperCase())
+      [gateMatch?.[1]].filter((v): v is string => !!v).map((v) => v.toUpperCase())
     );
 
-    const flightCandidates = (message.match(FLIGHT_TOKEN_RE) ?? [])
+    // A mentioned identifier (letters+digits, e.g. "KL713" or "PBM-BG1002") could be EITHER a
+    // flight number OR a baggage tag — the system allows free-form ids for both, and passengers
+    // rarely label which is which ("my bag PBM-BG1002", or just "PBM-BG1002"). So we collect all
+    // id-like tokens and try each as a flight first, then as a baggage tag, instead of assuming
+    // any id is only ever a flight (which made every "bag <id>" / bare-id lookup fail).
+    const idCandidates = (message.match(FLIGHT_TOKEN_RE) ?? [])
       .map((t) => t.toUpperCase())
       .filter((t) => /[A-Z]/.test(t) && /\d/.test(t) && !exclude.has(t));
 
+    // An explicit "tag <id>" is the strongest baggage signal, so search it first for baggage.
+    const explicitTag = tagMatch?.[1]?.toUpperCase();
+    const tagSearchOrder = [explicitTag, ...idCandidates].filter((v): v is string => !!v);
+
+    // Resolve a flight from the candidates.
     let flight = null;
-    for (const candidate of flightCandidates) {
-      flight = await flightService.getByFlightNumber(candidate);
-      if (flight) break;
+    let matchedFlightId: string | null = null;
+    for (const candidate of idCandidates) {
+      const f = await flightService.getByFlightNumber(candidate);
+      if (f) {
+        flight = f;
+        matchedFlightId = candidate;
+        break;
+      }
     }
+
+    // Resolve a baggage item: explicit tag first, then any candidate that isn't the flight we
+    // just matched (so "flight KL713" isn't also probed as a tag needlessly).
+    let baggage = null;
+    for (const candidate of tagSearchOrder) {
+      if (candidate === matchedFlightId) continue;
+      const b = await baggageService.getByTagId(candidate);
+      if (b) {
+        baggage = b;
+        break;
+      }
+    }
+
     if (flight) {
       // Populates gateId, so this also answers "what gate is my flight at".
       sections.push(`Flight Data: ${JSON.stringify(flight)}`);
-    } else if (flightCandidates.length) {
-      notes.push(`No flight found matching "${flightCandidates[0]}".`);
-    } else if (LIST_INTENT_RE.test(message) && /\bflights?\b/i.test(message)) {
-      // No specific flight number mentioned, but the passenger wants the whole list
-      // (e.g. "list all flights") — public schedule info, safe to enumerate.
+    }
+
+    if (baggage) {
+      sections.push(`Baggage Data: ${JSON.stringify(baggage)}`);
+      // Follow baggage -> flight so we can also answer "which gate for my bag". Only fetch if we
+      // don't already have that same flight in context.
+      if (!flight || flight.flightNumber.toUpperCase() !== String(baggage.flightNumber).toUpperCase()) {
+        const relatedFlight = await flightService.getByFlightNumber(baggage.flightNumber);
+        if (relatedFlight) {
+          sections.push(`Flight Data (bag's flight): ${JSON.stringify(relatedFlight)}`);
+          if (!flight) flight = relatedFlight;
+        }
+      }
+    } else if (BAGGAGE_KEYWORDS_RE.test(message) && flight) {
+      // "where's the baggage on flight X" — list bags for that flight.
+      const bags = await baggageService.getByFlightNumber(flight.flightNumber);
+      if (bags.length) {
+        sections.push(`Baggage Data (flight ${flight.flightNumber}): ${JSON.stringify(bags)}`);
+      }
+    } else if (BAGGAGE_KEYWORDS_RE.test(message) && LIST_INTENT_RE.test(message)) {
+      // Unlike flights/gates, baggage records carry passenger names/emails — don't dump
+      // every passenger's bag data for an unauthenticated "list all baggage" request.
+      notes.push(
+        `The passenger asked to list all baggage — this isn't available for privacy reasons. Ask for their tag ID or flight number instead.`
+      );
+    }
+
+    // "list all flights" with no specific id — public schedule info, safe to enumerate.
+    if (!flight && !baggage && !idCandidates.length && LIST_INTENT_RE.test(message) && /\bflights?\b/i.test(message)) {
       const flights = await flightService.list({});
       const summary = flights.slice(0, MAX_LIST_ITEMS).map((f) => ({
         flightNumber: f.flightNumber,
@@ -62,28 +114,13 @@ export class ChatGPTService {
       );
     }
 
-    if (tagMatch?.[1]) {
-      const baggage = await baggageService.getByTagId(tagMatch[1].toUpperCase());
-      if (baggage) {
-        sections.push(`Baggage Data: ${JSON.stringify(baggage)}`);
-        if (!flight) {
-          const relatedFlight = await flightService.getByFlightNumber(baggage.flightNumber);
-          if (relatedFlight) sections.push(`Flight Data: ${JSON.stringify(relatedFlight)}`);
-        }
-      } else {
-        notes.push(`No baggage found for tag "${tagMatch[1]}".`);
+    // One "not found" note when the passenger clearly named an id that resolved to nothing.
+    if (!flight && !baggage) {
+      if (explicitTag) {
+        notes.push(`No baggage found for tag "${tagMatch?.[1]}".`);
+      } else if (idCandidates.length) {
+        notes.push(`No flight or baggage found matching "${idCandidates[0]}".`);
       }
-    } else if (BAGGAGE_KEYWORDS_RE.test(message) && flight) {
-      const baggage = await baggageService.getByFlightNumber(flight.flightNumber);
-      if (baggage.length) {
-        sections.push(`Baggage Data (flight ${flight.flightNumber}): ${JSON.stringify(baggage)}`);
-      }
-    } else if (BAGGAGE_KEYWORDS_RE.test(message) && LIST_INTENT_RE.test(message)) {
-      // Unlike flights/gates, baggage records carry passenger names/emails — don't dump
-      // every passenger's bag data for an unauthenticated "list all baggage" request.
-      notes.push(
-        `The passenger asked to list all baggage — this isn't available for privacy reasons. Ask for their tag ID or flight number instead.`
-      );
     }
 
     if (gateMatch?.[1]) {
