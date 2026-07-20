@@ -87,3 +87,4 @@ Two things to watch:
 - The frontend is served over HTTPS, so the backend URL **must** also be HTTPS — browsers block mixed content and every API call would fail.
 - `CORS_ORIGIN` must match the frontend origin exactly. A mismatch shows up as a CORS error in DevTools, not a server error.
 - `src/utils/logger.ts` writes `error.log` and `combined.log` to the working directory. On hosts with ephemeral filesystems these vanish on redeploy; use the platform's log stream instead.
+# japi
