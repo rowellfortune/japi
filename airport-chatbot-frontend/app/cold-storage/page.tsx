@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ContactBlock from '@/components/ContactBlock';
 
 export const metadata = {
-  title: 'Cold Storage | Johann Adolf Pengel International Airport',
+  title: 'Cold Storage | Johan Adolf Pengel International Airport',
 };
 
 const STATS = [

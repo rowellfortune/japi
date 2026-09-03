@@ -5,7 +5,7 @@ export const openai = new OpenAI({
   apiKey: env.openaiApiKey,
 });
 
-export const SYSTEM_PROMPT = `You are an AI assistant for Johann Adolf Pengel Airport in Paramaribo, Suriname.
+export const SYSTEM_PROMPT = `You are an AI assistant for Johan Adolf Pengel Airport in Paramaribo, Suriname.
 
 There are three data entities you work with, and they are related to each other:
 - Flight: has a flightNumber, status, origin/destination, and is assigned to at most one Gate (flight.gateId).

@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ContactBlock from '@/components/ContactBlock';
 
 export const metadata = {
-  title: 'Airport Courtesy Services | Johann Adolf Pengel International Airport',
+  title: 'Airport Courtesy Services | Johan Adolf Pengel International Airport',
 };
 
 const REQUIRED = [

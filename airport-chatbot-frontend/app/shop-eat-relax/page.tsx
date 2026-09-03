@@ -1,7 +1,7 @@
 import PageHero from '@/components/PageHero';
 
 export const metadata = {
-  title: 'Shop, Eat & Relax | Johann Adolf Pengel International Airport',
+  title: 'Shop, Eat & Relax | Johan Adolf Pengel International Airport',
 };
 
 const SERVICES = [
@@ -22,7 +22,7 @@ export default function ShopEatRelaxPage() {
       <PageHero eyebrow="At the airport" title="Shop, Eat & Relax" />
       <section className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-10">
         <p className="text-slate-muted text-lg leading-relaxed max-w-3xl">
-          We offer the following services located inside the Arrivals Terminal of Johann Adolf Pengel
+          We offer the following services located inside the Arrivals Terminal of Johan Adolf Pengel
           International Airport.
         </p>
 

@@ -44,7 +44,7 @@ export default function Footer() {
               PBM
             </div>
             <p className="mt-4 text-sm text-slate-400 leading-relaxed">
-              Johann Adolf Pengel International Airport
+              Johan Adolf Pengel International Airport
               <br />
               Zanderij, Suriname
             </p>
@@ -80,7 +80,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400">
-          <p>© 2026 Johann Adolf Pengel International Airport. Flight information is provided for reference only.</p>
+          <p>© 2026 Johan Adolf Pengel International Airport. Flight information is provided for reference only.</p>
           <p>Paramaribo, Suriname</p>
         </div>
       </div>

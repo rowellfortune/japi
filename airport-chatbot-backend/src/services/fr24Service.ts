@@ -21,6 +21,14 @@ export interface LiveBoardFr24Data {
   firstSeen: Date | null;
   lastSeen: Date | null;
   flightEnded: boolean;
+  liveLatitude: number | null;
+  liveLongitude: number | null;
+  liveAltitudeFt: number | null;
+  liveGroundSpeedKts: number | null;
+  liveVerticalSpeedFpm: number | null;
+  liveTrackDeg: number | null;
+  liveEta: Date | null;
+  livePositionUpdatedAt: Date | null;
 }
 
 export interface LiveBoardFlight {
@@ -98,6 +106,44 @@ async function resolveAirlineName(icao: string | null | undefined): Promise<stri
 type CompletedSummary = Fr24FlightSummary & { flight: string; datetime_takeoff: string; datetime_landed: string };
 type WithFlightNumber = Fr24FlightSummary & { flight: string; datetime_takeoff: string };
 
+// Real-time ADS-B telemetry for whatever's currently airborne to/from our airports, keyed by
+// flight number — merged onto matching board entries below. Best-effort: an aircraft that has
+// already landed (or isn't transmitting) just won't have an entry, which is expected, not an
+// error, so a lookup miss is silently skipped rather than logged.
+type LivePositionFields = Pick<
+  LiveBoardFr24Data,
+  'liveLatitude' | 'liveLongitude' | 'liveAltitudeFt' | 'liveGroundSpeedKts' | 'liveVerticalSpeedFpm' | 'liveTrackDeg' | 'liveEta' | 'livePositionUpdatedAt'
+>;
+
+async function fetchLivePositionsByFlightNumber(): Promise<Map<string, LivePositionFields>> {
+  const positions = new Map<string, LivePositionFields>();
+  try {
+    const live = await getFr24Client().live.getFull({ airports: HOME_AIRPORTS.join(',') });
+    for (const p of live) {
+      if (!p.flight) continue;
+      positions.set(p.flight.toUpperCase(), mapLivePosition(p));
+    }
+  } catch (err) {
+    // Supplementary data — a failure here shouldn't take down the whole sync, just leave every
+    // flight without a live position this cycle (they'll get one on the next successful poll).
+    logger.error('FR24 live position lookup failed:', err instanceof Error ? err.message : err);
+  }
+  return positions;
+}
+
+function mapLivePosition(p: { lat: number; lon: number; alt: number; gspeed: number; vspeed: number; track: number; eta?: string | null; timestamp: string }): LivePositionFields {
+  return {
+    liveLatitude: p.lat,
+    liveLongitude: p.lon,
+    liveAltitudeFt: p.alt,
+    liveGroundSpeedKts: p.gspeed,
+    liveVerticalSpeedFpm: p.vspeed,
+    liveTrackDeg: p.track,
+    liveEta: p.eta ? new Date(p.eta) : null,
+    livePositionUpdatedAt: new Date(p.timestamp),
+  };
+}
+
 // Fetches every actual takeoff/landing FR24 has recorded for PBM or ORG in the last
 // SYNC_WINDOW_HOURS and normalizes it into board-ready flight records. Meant to be re-run on an
 // interval (see src/jobs/fr24Sync.ts) so the result reflects whatever FR24 has logged as of now.
@@ -122,6 +168,10 @@ export async function fetchLiveBoard(): Promise<LiveBoardResult> {
   // Anonymous/unidentified traffic (no flight number, e.g. some GA or military movements) can't
   // be placed on a numbered flight board.
   const withNumbers = data.filter((f): f is WithFlightNumber => Boolean(f.flight && f.datetime_takeoff));
+
+  // One shared lookup for the whole batch — only flights genuinely still airborne right now will
+  // have an entry.
+  const livePositions = await fetchLivePositionsByFlightNumber();
 
   // Same-route average block time within this batch, used to estimate arrival for flights
   // still airborne (FR24 hasn't published a landing time for them yet).
@@ -164,6 +214,8 @@ export async function fetchLiveBoard(): Promise<LiveBoardResult> {
       status = 'Departed';
     }
 
+    const livePosition = livePositions.get(f.flight.toUpperCase());
+
     board.push({
       flightNumber: f.flight.toUpperCase(),
       airline,
@@ -189,6 +241,14 @@ export async function fetchLiveBoard(): Promise<LiveBoardResult> {
         firstSeen: f.first_seen ? new Date(f.first_seen) : null,
         lastSeen: f.last_seen ? new Date(f.last_seen) : null,
         flightEnded: f.flight_ended,
+        liveLatitude: livePosition?.liveLatitude ?? null,
+        liveLongitude: livePosition?.liveLongitude ?? null,
+        liveAltitudeFt: livePosition?.liveAltitudeFt ?? null,
+        liveGroundSpeedKts: livePosition?.liveGroundSpeedKts ?? null,
+        liveVerticalSpeedFpm: livePosition?.liveVerticalSpeedFpm ?? null,
+        liveTrackDeg: livePosition?.liveTrackDeg ?? null,
+        liveEta: livePosition?.liveEta ?? null,
+        livePositionUpdatedAt: livePosition?.livePositionUpdatedAt ?? null,
       },
     });
   }

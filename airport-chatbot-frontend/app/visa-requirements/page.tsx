@@ -1,7 +1,7 @@
 import PageHero from '@/components/PageHero';
 
 export const metadata = {
-  title: 'Visa Requirements & Health Information | Johann Adolf Pengel International Airport',
+  title: 'Visa Requirements & Health Information | Johan Adolf Pengel International Airport',
 };
 
 const EXEMPTIONS = [

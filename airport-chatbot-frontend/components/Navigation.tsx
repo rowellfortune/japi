@@ -30,7 +30,7 @@ const NAV: Item[] = [
       { label: 'Announcement', ask: 'Are there any current airport announcements?' },
       { label: 'Interne telefoonlijst', ask: 'What are the airport contact numbers?' },
       { label: 'Airport Statistics', ask: 'What are the airport statistics?' },
-      { label: 'Infomercials', ask: 'Tell me about Johann Adolf Pengel International Airport.' },
+      { label: 'Infomercials', ask: 'Tell me about Johan Adolf Pengel International Airport.' },
       { label: 'Pilot Information', ask: 'What information is available for pilots?' },
       { label: 'Runway Run 2022', ask: 'Tell me about the Runway Run event.' },
       { label: 'Downloads', ask: 'What documents and forms can I download?' },

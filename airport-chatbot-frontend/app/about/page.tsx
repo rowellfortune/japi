@@ -1,7 +1,7 @@
 import PageHero from '@/components/PageHero';
 
 export const metadata = {
-  title: 'About JAPI-Airport | Johann Adolf Pengel International Airport',
+  title: 'About JAPI-Airport | Johan Adolf Pengel International Airport',
 };
 
 const CODES = [
@@ -19,7 +19,7 @@ export default function AboutPage() {
           <div id="history">
             <h2 className="font-heading text-2xl font-bold text-navy mb-3">History</h2>
             <p className="text-slate-muted leading-relaxed">
-              Johann Adolf Pengel International Airport (IATA: PBM, ICAO: SMJP), also known as
+              Johan Adolf Pengel International Airport (IATA: PBM, ICAO: SMJP), also known as
               Paramaribo-Zanderij International Airport, is an airport located in the town of Zanderij,
               45 km south of Paramaribo.
             </p>

@@ -62,7 +62,7 @@ export default function Hero() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-24 sm:pb-32">
           <p className="font-sans text-sm font-semibold tracking-[0.25em] text-white/70 uppercase mb-2">
-            Johann Adolf Pengel International Airport
+            Johan Adolf Pengel International Airport
           </p>
           <h1 className="font-heading font-black text-white leading-[0.85] text-[24vw] sm:text-[16rem]">
             PBM

@@ -49,11 +49,36 @@ declare module '@flightradar24/fr24sdk' {
     icao: string;
   }
 
+  // /live/flight-positions/full — real-time ADS-B telemetry for an airborne aircraft. Only
+  // present while it's actually transmitting; gone once it lands and drops off live tracking.
+  export interface Fr24LivePosition {
+    fr24_id: string;
+    flight: string | null;
+    callsign: string | null;
+    lat: number;
+    lon: number;
+    track: number;
+    alt: number;
+    gspeed: number;
+    vspeed: number;
+    squawk?: string | null;
+    timestamp: string;
+    source?: string | null;
+    hex?: string | null;
+    type?: string | null;
+    reg?: string | null;
+    eta?: string | null;
+    [key: string]: unknown;
+  }
+
   export class Client {
     constructor(options: Fr24ClientOptions);
     flightSummary: {
       getLight(params: Record<string, unknown>): Promise<{ data: Fr24FlightSummary[] }>;
       getFull(params: Record<string, unknown>): Promise<{ data: Fr24FlightSummary[] }>;
+    };
+    live: {
+      getFull(params: Record<string, unknown>): Promise<Fr24LivePosition[]>;
     };
     airports: {
       getLight(code: string): Promise<Fr24AirportLight>;

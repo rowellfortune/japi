@@ -1,7 +1,7 @@
 import PageHero from '@/components/PageHero';
 
 export const metadata = {
-  title: 'Airport Fees and Charges | Johann Adolf Pengel International Airport',
+  title: 'Airport Fees and Charges | Johan Adolf Pengel International Airport',
 };
 
 const FEES: { category: string; rate: string }[] = [

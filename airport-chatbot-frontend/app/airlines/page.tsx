@@ -3,7 +3,7 @@ import PageHero from '@/components/PageHero';
 import { ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Airlines & Destinations | Johann Adolf Pengel International Airport',
+  title: 'Airlines & Destinations | Johan Adolf Pengel International Airport',
 };
 
 type Airline = { carrier: string; destinations: string; website?: string };
@@ -29,7 +29,7 @@ export default function AirlinesPage() {
 
       <section className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
         <p className="text-slate-muted leading-relaxed max-w-2xl mb-8">
-          The following carriers operate scheduled service to and from Johann Adolf Pengel
+          The following carriers operate scheduled service to and from Johan Adolf Pengel
           International Airport (IATA: PBM · ICAO: SMJP).
         </p>
 

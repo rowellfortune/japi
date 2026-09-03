@@ -3,7 +3,7 @@ import PageHero from '@/components/PageHero';
 import { ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Business | Johann Adolf Pengel International Airport',
+  title: 'Business | Johan Adolf Pengel International Airport',
 };
 
 const SERVICES: { href: string; title: string; body: string }[] = [
@@ -25,7 +25,7 @@ export default function BusinessPage() {
 
       <section className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
         <p className="text-slate-muted leading-relaxed max-w-3xl mb-8">
-          Johann Adolf Pengel International Airport offers a range of commercial and traveller
+          Johan Adolf Pengel International Airport offers a range of commercial and traveller
           services. Explore what&apos;s available below.
         </p>
 

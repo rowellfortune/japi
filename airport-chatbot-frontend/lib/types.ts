@@ -99,6 +99,16 @@ export interface FlightFr24Data {
   firstSeen: string | null;
   lastSeen: string | null;
   flightEnded: boolean;
+  // Real-time ADS-B telemetry — only present while the aircraft is actually transmitting
+  // (currently airborne). Absent once it lands or if it never appeared in live tracking.
+  liveLatitude: number | null;
+  liveLongitude: number | null;
+  liveAltitudeFt: number | null;
+  liveGroundSpeedKts: number | null;
+  liveVerticalSpeedFpm: number | null;
+  liveTrackDeg: number | null;
+  liveEta: string | null;
+  livePositionUpdatedAt: string | null;
 }
 
 export interface PublicFlightDetail {

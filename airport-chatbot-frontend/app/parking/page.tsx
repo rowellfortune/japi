@@ -4,7 +4,7 @@ import ContactBlock from '@/components/ContactBlock';
 import { ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Parking | Johann Adolf Pengel International Airport',
+  title: 'Parking | Johan Adolf Pengel International Airport',
 };
 
 export default function ParkingPage() {

@@ -5,9 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { publicAPI } from '@/lib/api';
-import { PublicFlightDetail } from '@/lib/types';
+import { PublicFlightDetail, FlightFr24Data } from '@/lib/types';
 import { colorFor, splitFlightNumber, getTimeDelta } from '@/lib/flightDisplay';
-import { formatTime, statusBadgeClass, statusDotClass, statusTextClass } from '@/components/landing/statusStyles';
+import { formatTime, formatDateLabel, statusBadgeClass, statusDotClass, statusTextClass } from '@/components/landing/statusStyles';
 import { PlaneIcon } from '@/components/icons';
 import SurinameClock from '@/components/flights/SurinameClock';
 
@@ -15,9 +15,10 @@ import SurinameClock from '@/components/flights/SurinameClock';
 // gates/terminals for, so that's the side of the route a flight's terminal/gate belongs to.
 const HOME_AIRPORTS = ['PBM'];
 
-function formatFullDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
+// Suriname has one timezone, no DST — mirrors statusStyles.ts's formatTime/formatDateLabel and
+// SurinameClock.tsx. Pinned explicitly so the page reads correctly for any visitor regardless of
+// their own device's timezone, not just one who happens to be in Suriname already.
+const TIME_ZONE = 'America/Paramaribo';
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -29,12 +30,113 @@ function formatDistance(km: number): string {
   return `${Math.round(km).toLocaleString()} km`;
 }
 
+// How stale a live ADS-B position report can be before we stop trusting it enough to display —
+// FR24 syncs run periodically, so a "live" fix can lag by a few minutes even for an airborne
+// aircraft; past this it more likely means the flight has landed and dropped off live tracking.
+const LIVE_POSITION_MAX_AGE_MS = 20 * 60 * 1000;
+
+function isLivePositionFresh(updatedAtIso: string | null): boolean {
+  if (!updatedAtIso) return false;
+  return Date.now() - new Date(updatedAtIso).getTime() < LIVE_POSITION_MAX_AGE_MS;
+}
+
+const COMPASS_POINTS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+
+function formatHeading(deg: number): string {
+  const point = COMPASS_POINTS[Math.round(deg / 22.5) % 16];
+  return `${Math.round(deg)}° ${point}`;
+}
+
+function formatVerticalSpeed(fpm: number): string {
+  if (Math.abs(fpm) < 100) return 'Level';
+  const direction = fpm > 0 ? 'Climbing' : 'Descending';
+  return `${direction}, ${Math.round(Math.abs(fpm)).toLocaleString()} ft/min`;
+}
+
+function LiveFlightData({ fr24 }: { fr24: FlightFr24Data }) {
+  return (
+    <div className="pt-6 mt-6 border-t border-gray-100">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-muted mb-3 flex items-center gap-1.5">
+        <span className="relative flex w-1.5 h-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-green-500" />
+        </span>
+        Live Position
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4">
+        <DetailItem label="Altitude" value={fr24.liveAltitudeFt != null ? `${Math.round(fr24.liveAltitudeFt).toLocaleString()} ft` : null} />
+        <DetailItem label="Ground Speed" value={fr24.liveGroundSpeedKts != null ? `${Math.round(fr24.liveGroundSpeedKts)} kts` : null} />
+        <DetailItem label="Vertical Speed" value={fr24.liveVerticalSpeedFpm != null ? formatVerticalSpeed(fr24.liveVerticalSpeedFpm) : null} />
+        <DetailItem label="Heading" value={fr24.liveTrackDeg != null ? formatHeading(fr24.liveTrackDeg) : null} />
+      </div>
+    </div>
+  );
+}
+
 function DetailItem({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
     <div>
       <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-muted">{label}</span>
       <span className="text-sm font-semibold text-navy">{value}</span>
+    </div>
+  );
+}
+
+// Where the plane sits between origin and destination, 0 = still at gate, 1 = at destination.
+// Elapsed time against the ETA, not distance: FR24's actual_distance/circle_distance on the
+// flight-summary endpoint both measure from the origin to the aircraft's *current* tracked
+// position (confirmed by watching both climb together in lockstep call after call), not to the
+// destination — so their ratio sits near 100% almost immediately and isn't a usable trip-progress
+// signal. Elapsed-vs-ETA is: uses only real timestamps, and — because it's a function of `nowMs`
+// (ticking every second, see the caller) against `liveEta` (refreshed every sync to reflect the
+// aircraft's actual current speed) — the icon creeps forward continuously and self-corrects on
+// each sync, with no separate speed-extrapolation step needed.
+function computeRouteProgress(flight: PublicFlightDetail, displayStatus: string, nowMs: number): number {
+  if (displayStatus === 'Cancelled' || displayStatus === 'Scheduled' || displayStatus === 'Boarding') return 0;
+  if (displayStatus === 'Arrived') return 1;
+
+  const dep = new Date(flight.departureTime).getTime();
+  const eta = new Date(flight.fr24?.liveEta ?? flight.arrivalTime).getTime();
+  if (eta > dep) {
+    return Math.min(1, Math.max(0, (nowMs - dep) / (eta - dep)));
+  }
+  return 0;
+}
+
+// "1h 7m remaining" / "42m remaining" while a flight is in the air; null once it's landed or hasn't left yet.
+function formatRemaining(ms: number): string | null {
+  if (ms <= 0) return null;
+  const totalMinutes = Math.round(ms / 60000);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return h > 0 ? `${h}h ${m}m remaining` : `${m}m remaining`;
+}
+
+function RouteProgress({ progress, isInFlight, remainingLabel }: { progress: number; isInFlight: boolean; remainingLabel: string | null }) {
+  const pct = `${Math.round(progress * 100)}%`;
+  return (
+    <div className="flex-1 flex flex-col items-center gap-2 px-3">
+      <div className="relative w-full h-3 flex items-center">
+        <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-slate-200" />
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-navy transition-[width] duration-1000 ease-out"
+          style={{ width: `${progress * 100}%` }}
+        />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-navy" />
+        <span className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 rounded-full bg-slate-300" />
+        <span
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-[left] duration-1000 ease-out"
+          style={{ left: `${progress * 100}%` }}
+        >
+          <PlaneIcon className={`w-4 h-4 text-navy rotate-90 ${isInFlight ? 'animate-pulse' : ''}`} />
+        </span>
+      </div>
+      {remainingLabel ? (
+        <span className="text-xs font-medium text-slate-500">{remainingLabel}</span>
+      ) : (
+        <span className="sr-only">{`Flight is ${pct} of the way to its destination`}</span>
+      )}
     </div>
   );
 }
@@ -68,7 +170,7 @@ function EventColumn({
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-muted mb-1">{label}</p>
-      <p className="text-sm text-slate-500">{formatFullDate(iso)}</p>
+      <p className="text-sm text-slate-500">{formatDateLabel(iso)}</p>
       <p className={`font-heading text-2xl font-extrabold ${delta?.isDelayed ? 'text-amber-600' : 'text-navy'}`}>{formatTime(iso)}</p>
       {delta?.label && (
         <p className="text-xs text-slate-400 mt-0.5">
@@ -101,6 +203,10 @@ export default function FlightDetailClient() {
 
   const [flight, setFlight] = useState<PublicFlightDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ticks once a second so the plane icon visibly creeps forward (extrapolated from live ground
+  // speed) and the remaining-time countdown counts down, instead of both sitting frozen between
+  // FR24 syncs.
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     if (!flightNumber) {
@@ -116,6 +222,11 @@ export default function FlightDetailClient() {
         setError(err?.response?.status === 404 ? `No flight found matching "${flightNumber}".` : 'Could not load flight details right now.');
       });
   }, [flightNumber]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (error) {
     return (
@@ -150,6 +261,14 @@ export default function FlightDetailClient() {
   const departureDelta = flight.status !== 'Cancelled' ? getTimeDelta(flight.scheduledDepartureTime, flight.departureTime) : null;
   const arrivalDelta = flight.status !== 'Cancelled' ? getTimeDelta(flight.scheduledArrivalTime, flight.arrivalTime) : null;
   const displayStatus = departureDelta?.isDelayed || arrivalDelta?.isDelayed ? 'Delayed' : flight.status;
+  const routeProgress = computeRouteProgress(flight, displayStatus, nowMs);
+  const isInFlight = displayStatus === 'Departed' || displayStatus === 'Delayed';
+  // Prefer the real live ETA from ADS-B tracking (updated every sync while airborne) over the
+  // arrivalTime estimate, which for a still-airborne flight is only a same-route block-time
+  // average computed once at first sighting (see the backend's fr24Service.ts).
+  const etaSource = flight.fr24?.liveEta ?? flight.arrivalTime;
+  const remainingLabel = isInFlight ? formatRemaining(new Date(etaSource).getTime() - nowMs) : null;
+  const livePosition = isInFlight && isLivePositionFresh(flight.fr24?.livePositionUpdatedAt ?? null) ? flight.fr24 : null;
 
   return (
     <main className="flex-1">
@@ -177,17 +296,13 @@ export default function FlightDetailClient() {
             </span>
             <span className="text-xs text-slate-muted">
               Last updated{' '}
-              {new Date(flight.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+              {new Date(flight.updatedAt).toLocaleTimeString('en-US', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-4 pb-6 border-b border-gray-100">
             <AirportBlock code={flight.origin} name={flight.originName} align="left" />
-            <div className="flex-1 flex items-center gap-2 px-2">
-              <span className="h-px flex-1 bg-cta/30" />
-              <PlaneIcon className="w-5 h-5 text-cta rotate-90" />
-              <span className="h-px flex-1 bg-cta/30" />
-            </div>
+            <RouteProgress progress={routeProgress} isInFlight={isInFlight} remainingLabel={remainingLabel} />
             <AirportBlock code={flight.destination} name={flight.destinationName} align="right" />
           </div>
 
@@ -209,6 +324,8 @@ export default function FlightDetailClient() {
               terminal={flight.terminal}
             />
           </div>
+
+          {livePosition && <LiveFlightData fr24={livePosition} />}
 
           {flight.fr24 && (
             <div className="pt-6 mt-6 border-t border-gray-100">

@@ -4,7 +4,7 @@ import ContactBlock from '@/components/ContactBlock';
 import { ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Park & Fly | Johann Adolf Pengel International Airport',
+  title: 'Park & Fly | Johan Adolf Pengel International Airport',
 };
 
 const OPTIONS = [

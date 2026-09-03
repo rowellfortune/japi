@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { env } from '../config/env';
 import { Gate } from '../models/Gate';
 
-// Standalone gate inventory for Johann Adolf Pengel Airport (PBM). seedFlights also creates
+// Standalone gate inventory for Johan Adolf Pengel Airport (PBM). seedFlights also creates
 // PBM-G1..G14 and marks them Occupied by assigning a flight; this script owns the full gate
 // list independently, including spare gates not tied to any flight, so the gate board can be
 // seeded without touching flights.

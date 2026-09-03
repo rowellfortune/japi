@@ -2,7 +2,7 @@ import PageHero from '@/components/PageHero';
 import ContactBlock from '@/components/ContactBlock';
 
 export const metadata = {
-  title: 'Advertising | Johann Adolf Pengel International Airport',
+  title: 'Advertising | Johan Adolf Pengel International Airport',
 };
 
 export default function AdvertisingPage() {
@@ -13,7 +13,7 @@ export default function AdvertisingPage() {
         <div className="space-y-4 text-slate-muted leading-relaxed max-w-3xl">
           <p>Suriname has a booming oil and gold industry. The tourism sector is steadily growing each year.</p>
           <p>
-            Given these facts we have an influx of business and leisure travelers passing the Johann
+            Given these facts we have an influx of business and leisure travelers passing the Johan
             Adolf Pengel International Airport every day.
           </p>
           <p>

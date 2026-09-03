@@ -3,7 +3,7 @@ import { env } from '../config/env';
 import { Baggage } from '../models/Baggage';
 import { Flight } from '../models/Flight';
 
-// Demo baggage for Johann Adolf Pengel Airport (PBM). Each item references a flightNumber that
+// Demo baggage for Johan Adolf Pengel Airport (PBM). Each item references a flightNumber that
 // seedFlights creates. The destination is NOT hardcoded here — it is looked up from the actual
 // Flight at seed time, so the Baggage -> Flight destination can never drift out of sync (the
 // chatbot follows the Baggage -> Flight -> Gate chain, so this correspondence must hold). A bag

@@ -1,7 +1,7 @@
 import PageHero from '@/components/PageHero';
 
 export const metadata = {
-  title: 'Safety & Security | Johann Adolf Pengel International Airport',
+  title: 'Safety & Security | Johan Adolf Pengel International Airport',
 };
 
 const TIPS = [
@@ -17,7 +17,7 @@ export default function SafetySecurityPage() {
       <PageHero eyebrow="Before you fly" title="Safety & Security" />
       <section className="max-w-5xl mx-auto px-4 sm:px-6 py-12 space-y-10">
         <p className="text-slate-muted text-lg leading-relaxed max-w-3xl">
-          Security at Johann Adolf Pengel International Airport is about ensuring the safety of all our
+          Security at Johan Adolf Pengel International Airport is about ensuring the safety of all our
           airport users. We work together with the Civil Aviation Safety Authority Suriname (CASAS) to
           provide the best air travel security possible. Know before you go.
         </p>

@@ -3,7 +3,7 @@ import PageHero from '@/components/PageHero';
 import { ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Airport Rules | Johann Adolf Pengel International Airport',
+  title: 'Airport Rules | Johan Adolf Pengel International Airport',
 };
 
 export default function AirportRulesPage() {

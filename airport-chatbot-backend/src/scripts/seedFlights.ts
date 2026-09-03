@@ -1,22 +1,19 @@
 import mongoose from 'mongoose';
 import { env } from '../config/env';
 import { Flight } from '../models/Flight';
-import { Gate } from '../models/Gate';
 
 // Source: Flightradar24 flight summary API (get_flight_summary_light) for Paramaribo Zanderij
 // International Airport (PBM/SMJP), queried for 2026-09-01T00:00Z-2026-09-02T23:59Z and captured
 // 2026-09-02. Real flight numbers/routes/aircraft/actual takeoff+landing times. Two in-progress
 // flights (KL713, PY993) had no landing time yet at capture time; their arrival is estimated from
-// the typical AMS<->PBM block time (~9h45m) observed on the completed KL714 leg. Gate numbers are
-// NOT published by Flightradar24 and are made up here purely so the demo data exercises the
-// Flight<->Gate relationship.
+// the typical AMS<->PBM block time (~9h45m) observed on the completed KL714 leg.
+//
+// FR24 does not publish scheduled (as opposed to actual) times or gate assignments, so those are
+// deliberately left unset here rather than invented — scheduledDepartureTime/scheduledArrivalTime
+// stay null (see models/Flight.ts) and gateId stays unassigned until an admin sets one via the
+// Flight/Gate CRUD, exactly as a flight seen for the first time via fr24Sync.ts would land.
 const DAY1 = '2026-09-01';
 const DAY2 = '2026-09-02';
-
-// Prefixed to guarantee no collision with pre-existing gate numbers (e.g. a real "A5" already
-// existed from earlier manual testing) — one dedicated gate per flight keeps the Flight<->Gate
-// relationship a clean one-to-one instead of several flights fighting over a handful of gates.
-const GATE_PREFIX = 'PBM-G';
 
 interface SeedFlight {
   flightNumber: string;
@@ -52,15 +49,8 @@ const run = async () => {
   if (!env.mongodbUri) throw new Error('MONGODB_URI not defined');
   await mongoose.connect(env.mongodbUri);
 
-  for (const [i, f] of FLIGHTS.entries()) {
-    const gateNumber = `${GATE_PREFIX}${i + 1}`;
-    const gate = await Gate.findOneAndUpdate(
-      { gateNumber },
-      { $setOnInsert: { gateNumber, terminal: 'Main Terminal' } },
-      { upsert: true, new: true }
-    );
-
-    const flight = await Flight.findOneAndUpdate(
+  for (const f of FLIGHTS) {
+    await Flight.findOneAndUpdate(
       { flightNumber: f.flightNumber },
       {
         flightNumber: f.flightNumber,
@@ -69,24 +59,19 @@ const run = async () => {
         destination: f.destination,
         departureTime: new Date(f.departureTime),
         arrivalTime: new Date(f.arrivalTime),
+        scheduledDepartureTime: null,
+        scheduledArrivalTime: null,
         status: f.status,
         aircraft: f.aircraft,
-        gateId: gate._id,
+        gateId: null,
       },
       { upsert: true, new: true }
     );
 
-    // Keep the relationship consistent both ways: the gate should agree it's holding this flight.
-    await Gate.findByIdAndUpdate(gate._id, {
-      currentFlightId: flight._id,
-      status: 'Occupied',
-      assignedAt: new Date(),
-    });
-
-    console.log(`Upserted ${f.flightNumber}: ${f.origin} -> ${f.destination} (gate ${gateNumber})`);
+    console.log(`Upserted ${f.flightNumber}: ${f.origin} -> ${f.destination}`);
   }
 
-  console.log(`\nDone. ${FLIGHTS.length} flights and gates upserted (1:1).`);
+  console.log(`\nDone. ${FLIGHTS.length} flights upserted.`);
   await mongoose.disconnect();
 };
 

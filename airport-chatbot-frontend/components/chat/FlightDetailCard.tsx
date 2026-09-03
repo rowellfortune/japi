@@ -11,8 +11,11 @@ interface FlightDetailCardProps {
   flight: ChatFlightDetail;
 }
 
+// Suriname has one timezone, no DST — mirrors statusStyles.ts's formatTime/formatDateLabel.
+const TIME_ZONE = 'America/Paramaribo';
+
 function updatedLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+  return new Date(iso).toLocaleTimeString('en-US', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 }
 
 function AirportTime({ iso, scheduledIso, align }: { iso: string; scheduledIso: string | null; align: 'left' | 'right' }) {

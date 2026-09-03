@@ -18,6 +18,17 @@ export interface IFlightFr24Data {
   firstSeen: Date | null;
   lastSeen: Date | null;
   flightEnded: boolean;
+  // Live ADS-B telemetry from FR24's /live/flight-positions endpoint (see fr24Service.ts) —
+  // only present while the aircraft is actually transmitting, i.e. currently airborne. Stops
+  // updating (and goes stale) once the flight lands and drops off live tracking.
+  liveLatitude: number | null;
+  liveLongitude: number | null;
+  liveAltitudeFt: number | null;
+  liveGroundSpeedKts: number | null;
+  liveVerticalSpeedFpm: number | null;
+  liveTrackDeg: number | null;
+  liveEta: Date | null;
+  livePositionUpdatedAt: Date | null;
 }
 
 export interface IFlight extends Document {
@@ -60,6 +71,14 @@ const fr24DataSchema = new Schema<IFlightFr24Data>(
     firstSeen: { type: Date, default: null },
     lastSeen: { type: Date, default: null },
     flightEnded: { type: Boolean, default: false },
+    liveLatitude: { type: Number, default: null },
+    liveLongitude: { type: Number, default: null },
+    liveAltitudeFt: { type: Number, default: null },
+    liveGroundSpeedKts: { type: Number, default: null },
+    liveVerticalSpeedFpm: { type: Number, default: null },
+    liveTrackDeg: { type: Number, default: null },
+    liveEta: { type: Date, default: null },
+    livePositionUpdatedAt: { type: Date, default: null },
   },
   { _id: false }
 );

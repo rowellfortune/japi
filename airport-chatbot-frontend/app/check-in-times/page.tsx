@@ -3,7 +3,7 @@ import PageHero from '@/components/PageHero';
 import { ClockIcon, ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Check-In Times | Johann Adolf Pengel International Airport',
+  title: 'Check-In Times | Johan Adolf Pengel International Airport',
 };
 
 const WINDOWS = [

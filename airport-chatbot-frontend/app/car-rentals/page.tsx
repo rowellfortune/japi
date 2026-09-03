@@ -1,7 +1,7 @@
 import PageHero from '@/components/PageHero';
 
 export const metadata = {
-  title: 'Car Rentals | Johann Adolf Pengel International Airport',
+  title: 'Car Rentals | Johan Adolf Pengel International Airport',
 };
 
 type Provider = {

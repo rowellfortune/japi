@@ -14,12 +14,20 @@ export function statusBadgeClass(status: string): string {
   return STATUS_STYLES[status] ?? 'bg-slate-100 text-slate-600 border-slate-200';
 }
 
+// Suriname has one timezone, no DST — America/Paramaribo is always UTC-3 (mirrors
+// components/flights/SurinameClock.tsx). Pinned explicitly rather than left to the runtime
+// default: without it, toLocaleTimeString/toLocaleDateString render in whichever timezone the
+// *viewer's device* happens to be set to, not the airport's — so the same flight would show a
+// different time to a visitor browsing from outside Suriname, silently wrong for a board that's
+// supposed to reflect this airport's local clock.
+const TIME_ZONE = 'America/Paramaribo';
+
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString('en-US', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit' });
 }
 
 export function formatDateLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { timeZone: TIME_ZONE, month: 'short', day: 'numeric' });
 }
 
 export const NEGATIVE_STATUSES = new Set(['Delayed', 'Cancelled']);

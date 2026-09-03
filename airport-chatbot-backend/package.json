@@ -1,7 +1,7 @@
 {
   "name": "airport-chatbot-backend",
   "version": "1.0.0",
-  "description": "Backend for Johann Adolf Pengel Airport AI chatbot",
+  "description": "Backend for Johan Adolf Pengel Airport AI chatbot",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",

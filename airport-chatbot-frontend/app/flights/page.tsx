@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import FlightsPageClient from './FlightsPageClient';
 
 export const metadata = {
-  title: 'Search Flights | Johann Adolf Pengel Airport',
+  title: 'Search Flights | Johan Adolf Pengel Airport',
 };
 
 export default function FlightsPage() {

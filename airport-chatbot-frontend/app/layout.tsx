@@ -19,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Johann Adolf Pengel Airport",
+  title: "Johan Adolf Pengel Airport",
   description: "AI-powered passenger information system",
 };
 

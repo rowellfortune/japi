@@ -3,7 +3,7 @@ import PageHero from '@/components/PageHero';
 import { ArrowRightIcon } from '@/components/icons';
 
 export const metadata = {
-  title: 'Fly-In & Fuel | Johann Adolf Pengel International Airport',
+  title: 'Fly-In & Fuel | Johan Adolf Pengel International Airport',
 };
 
 export default function FlyInFuelPage() {

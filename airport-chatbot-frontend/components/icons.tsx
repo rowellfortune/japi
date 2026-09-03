@@ -115,6 +115,22 @@ export function ChevronDownIcon({ className = '' }: { className?: string }) {
   );
 }
 
+export function ChevronLeftIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m15 6-6 6 6 6" />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
 export function ExternalLinkIcon({ className = '' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={className} aria-hidden="true">
