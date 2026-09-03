@@ -20,19 +20,19 @@ export const postMessage = handler(async (event: ApiEvent) => {
     chatHistory = new ChatHistory({ sessionId, userId: userId || undefined, messages: [] });
   }
 
-  const assistantMessage = await chatGPTService.chat(
+  const { content: assistantMessage, flights } = await chatGPTService.chat(
     cleanMessage,
     chatHistory.messages.map((m) => ({ role: m.role, content: m.content }))
   );
 
   chatHistory.messages.push(
     { role: 'user', content: cleanMessage, timestamp: new Date() },
-    { role: 'assistant', content: assistantMessage, timestamp: new Date() }
+    { role: 'assistant', content: assistantMessage, timestamp: new Date(), flights }
   );
 
   await chatHistory.save();
 
-  return json(200, { role: 'assistant', content: assistantMessage, timestamp: new Date() });
+  return json(200, { role: 'assistant', content: assistantMessage, flights, timestamp: new Date() });
 });
 
 // Mirrors chatController.getHistory.

@@ -18,7 +18,11 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-const NEGATIVE_STATUSES = new Set(['Delayed', 'Cancelled']);
+export function formatDateLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+export const NEGATIVE_STATUSES = new Set(['Delayed', 'Cancelled']);
 
 export function statusDotClass(status: string): string {
   return NEGATIVE_STATUSES.has(status) ? 'bg-red-500' : 'bg-green-500';

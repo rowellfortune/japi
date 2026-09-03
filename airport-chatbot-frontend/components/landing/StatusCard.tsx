@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import { publicAPI } from '@/lib/api';
 
 const STATUS_BADGE: Record<string, string> = {
-  Scheduled: 'bg-blue-600',
-  Boarding: 'bg-amber-500',
-  Delayed: 'bg-red-600',
+  Departed: 'bg-indigo-600',
   Arrived: 'bg-green-600',
 };
 
-const TRACKED_STATUSES = ['Scheduled', 'Boarding', 'Delayed', 'Arrived'] as const;
+// FR24 (the source for this board) only ever reports these two states — it has no concept of
+// Scheduled/Boarding/Delayed, so those never populate and were removed from the board.
+const TRACKED_STATUSES = ['Departed', 'Arrived'] as const;
 
 export default function StatusCard() {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);

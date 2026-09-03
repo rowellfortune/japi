@@ -19,19 +19,19 @@ export const postMessage = async (req: Request, res: Response) => {
       chatHistory = new ChatHistory({ sessionId, userId: userId || undefined, messages: [] });
     }
 
-    const assistantMessage = await chatGPTService.chat(
+    const { content: assistantMessage, flights, flight } = await chatGPTService.chat(
       cleanMessage,
       chatHistory.messages.map((m) => ({ role: m.role, content: m.content }))
     );
 
     chatHistory.messages.push(
       { role: 'user', content: cleanMessage, timestamp: new Date() },
-      { role: 'assistant', content: assistantMessage, timestamp: new Date() }
+      { role: 'assistant', content: assistantMessage, timestamp: new Date(), flights, flight }
     );
 
     await chatHistory.save();
 
-    res.json({ role: 'assistant', content: assistantMessage, timestamp: new Date() });
+    res.json({ role: 'assistant', content: assistantMessage, flights, flight, timestamp: new Date() });
   } catch (error) {
     logger.error('Chat error:', error);
     res.status(500).json({ error: 'Internal server error' });

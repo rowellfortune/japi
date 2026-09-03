@@ -26,4 +26,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET,
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   logLevel: process.env.LOG_LEVEL || 'info',
+  // Optional: the live Arrivals/Departures sync (src/jobs/fr24Sync.ts) no-ops without it instead
+  // of failing startup, since the chatbot/admin CRUD features don't depend on it.
+  fr24ApiToken: process.env.FR24_API_TOKEN || '',
 };

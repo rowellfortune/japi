@@ -3,13 +3,15 @@ import { env } from '../config/env';
 import { Flight } from '../models/Flight';
 import { Gate } from '../models/Gate';
 
-// Source: Flightradar24 scheduled arrivals/departures for Paramaribo Zanderij International
-// Airport (PBM/SMJP), captured 2026-07-18. Real flight numbers/routes/aircraft; the missing
-// half of each leg's timing (the airport only lists one side of arrival/departure) is estimated
-// from typical route duration. Gate numbers are NOT published by Flightradar24 and are made up
-// here purely so the demo data exercises the Flight<->Gate relationship.
-const TODAY = '2026-07-18';
-const TOMORROW = '2026-07-19';
+// Source: Flightradar24 flight summary API (get_flight_summary_light) for Paramaribo Zanderij
+// International Airport (PBM/SMJP), queried for 2026-09-01T00:00Z-2026-09-02T23:59Z and captured
+// 2026-09-02. Real flight numbers/routes/aircraft/actual takeoff+landing times. Two in-progress
+// flights (KL713, PY993) had no landing time yet at capture time; their arrival is estimated from
+// the typical AMS<->PBM block time (~9h45m) observed on the completed KL714 leg. Gate numbers are
+// NOT published by Flightradar24 and are made up here purely so the demo data exercises the
+// Flight<->Gate relationship.
+const DAY1 = '2026-09-01';
+const DAY2 = '2026-09-02';
 
 // Prefixed to guarantee no collision with pre-existing gate numbers (e.g. a real "A5" already
 // existed from earlier manual testing) — one dedicated gate per flight keeps the Flight<->Gate
@@ -23,25 +25,27 @@ interface SeedFlight {
   destination: string;
   departureTime: string;
   arrivalTime: string;
-  status: 'Scheduled' | 'Delayed';
+  status: 'Departed' | 'Arrived';
   aircraft: string;
 }
 
 const FLIGHTS: SeedFlight[] = [
-  { flightNumber: '8W726', airline: 'Fly AllWays', origin: 'GEO', destination: 'PBM', departureTime: `${TODAY}T17:00`, arrivalTime: `${TODAY}T18:15`, status: 'Scheduled', aircraft: 'F70' },
-  { flightNumber: 'PY422', airline: 'Surinam Airways', origin: 'GEO', destination: 'PBM', departureTime: `${TODAY}T19:00`, arrivalTime: `${TODAY}T20:15`, status: 'Scheduled', aircraft: '738' },
-  { flightNumber: 'G3-7472', airline: 'GOL', origin: 'BEL', destination: 'PBM', departureTime: `${TODAY}T18:30`, arrivalTime: `${TODAY}T20:30`, status: 'Scheduled', aircraft: '7M8' },
-  { flightNumber: 'PY9916', airline: 'Surinam Airways', origin: 'BEL', destination: 'PBM', departureTime: `${TOMORROW}T00:15`, arrivalTime: `${TOMORROW}T02:15`, status: 'Scheduled', aircraft: '738' },
-  { flightNumber: 'KL713', airline: 'KLM', origin: 'AMS', destination: 'PBM', departureTime: `${TODAY}T03:30`, arrivalTime: `${TODAY}T13:15`, status: 'Scheduled', aircraft: '77W' },
-  { flightNumber: 'PY332', airline: 'Surinam Airways', origin: 'GEO', destination: 'PBM', departureTime: `${TODAY}T12:15`, arrivalTime: `${TODAY}T13:30`, status: 'Scheduled', aircraft: '738' },
-  { flightNumber: 'PY993', airline: 'Surinam Airways', origin: 'AMS', destination: 'PBM', departureTime: `${TODAY}T05:05`, arrivalTime: `${TODAY}T14:50`, status: 'Scheduled', aircraft: 'A346' },
-  { flightNumber: 'CM318', airline: 'Copa Airlines', origin: 'PTY', destination: 'PBM', departureTime: `${TODAY}T12:37`, arrivalTime: `${TODAY}T16:37`, status: 'Scheduled', aircraft: '738' },
-  { flightNumber: 'KL714', airline: 'KLM', origin: 'PBM', destination: 'AMS', departureTime: `${TODAY}T18:10`, arrivalTime: `${TOMORROW}T03:55`, status: 'Delayed', aircraft: 'B77W' },
-  { flightNumber: 'PY9915', airline: 'Surinam Airways', origin: 'PBM', destination: 'BEL', departureTime: `${TODAY}T21:45`, arrivalTime: `${TODAY}T23:45`, status: 'Scheduled', aircraft: '738' },
-  { flightNumber: 'G3-7473', airline: 'GOL', origin: 'PBM', destination: 'BEL', departureTime: `${TODAY}T22:15`, arrivalTime: `${TOMORROW}T00:15`, status: 'Scheduled', aircraft: '7M8' },
-  { flightNumber: 'PY331', airline: 'Surinam Airways', origin: 'PBM', destination: 'GEO', departureTime: `${TODAY}T07:00`, arrivalTime: `${TODAY}T08:15`, status: 'Scheduled', aircraft: '738' },
-  { flightNumber: 'CM319', airline: 'Copa Airlines', origin: 'PBM', destination: 'PTY', departureTime: `${TODAY}T17:34`, arrivalTime: `${TODAY}T21:34`, status: 'Delayed', aircraft: '738' },
-  { flightNumber: 'PY994', airline: 'Surinam Airways', origin: 'PBM', destination: 'AMS', departureTime: `${TODAY}T21:00`, arrivalTime: `${TOMORROW}T06:45`, status: 'Scheduled', aircraft: '346' },
+  // -- DAY1 (2026-09-01), all completed --
+  { flightNumber: 'CM318', airline: 'Copa Airlines', origin: 'PTY', destination: 'PBM', departureTime: `${DAY1}T15:55:11Z`, arrivalTime: `${DAY1}T19:17:12Z`, status: 'Arrived', aircraft: 'B39M' },
+  { flightNumber: 'M6820', airline: 'Amerijet International', origin: 'PBM', destination: 'MIA', departureTime: `${DAY1}T15:36:58Z`, arrivalTime: `${DAY1}T19:55:21Z`, status: 'Arrived', aircraft: 'B763' },
+  { flightNumber: 'KL714', airline: 'KLM', origin: 'PBM', destination: 'AMS', departureTime: `${DAY1}T20:25:53Z`, arrivalTime: `${DAY2}T03:33:54Z`, status: 'Arrived', aircraft: 'B772' },
+  { flightNumber: 'CM319', airline: 'Copa Airlines', origin: 'PBM', destination: 'PTY', departureTime: `${DAY1}T20:32:20Z`, arrivalTime: `${DAY2}T00:10:56Z`, status: 'Arrived', aircraft: 'B39M' },
+  // -- DAY2 (2026-09-02), completed legs --
+  { flightNumber: 'G3-7472', airline: 'GOL', origin: 'BEL', destination: 'PBM', departureTime: `${DAY2}T03:11:04Z`, arrivalTime: `${DAY2}T04:48:24Z`, status: 'Arrived', aircraft: 'B38M' },
+  { flightNumber: 'BW883', airline: 'Caribbean Airlines', origin: 'POS', destination: 'PBM', departureTime: `${DAY2}T03:24:02Z`, arrivalTime: `${DAY2}T04:39:48Z`, status: 'Arrived', aircraft: 'B38M' },
+  { flightNumber: 'W8263', airline: 'Cargojet Airways', origin: 'GEO', destination: 'PBM', departureTime: `${DAY2}T04:20:09Z`, arrivalTime: `${DAY2}T05:02:00Z`, status: 'Arrived', aircraft: 'B763' },
+  { flightNumber: 'G3-7473', airline: 'GOL', origin: 'PBM', destination: 'BEL', departureTime: `${DAY2}T06:24:31Z`, arrivalTime: `${DAY2}T07:52:35Z`, status: 'Arrived', aircraft: 'B38M' },
+  { flightNumber: 'W8264', airline: 'Cargojet Airways', origin: 'PBM', destination: 'MIA', departureTime: `${DAY2}T07:02:01Z`, arrivalTime: `${DAY2}T11:15:21Z`, status: 'Arrived', aircraft: 'B763' },
+  { flightNumber: 'BW884', airline: 'Caribbean Airlines', origin: 'PBM', destination: 'POS', departureTime: `${DAY2}T07:47:11Z`, arrivalTime: `${DAY2}T09:04:34Z`, status: 'Arrived', aircraft: 'B38M' },
+  // -- DAY2 (2026-09-02), still airborne at capture time; arrival estimated from the ~9h45m
+  // AMS<->PBM block time observed on KL714 above --
+  { flightNumber: 'KL713', airline: 'KLM', origin: 'AMS', destination: 'PBM', departureTime: `${DAY2}T08:39:19Z`, arrivalTime: `${DAY2}T18:24:00Z`, status: 'Departed', aircraft: 'B772' },
+  { flightNumber: 'PY993', airline: 'Surinam Airways', origin: 'AMS', destination: 'PBM', departureTime: `${DAY2}T08:50:24Z`, arrivalTime: `${DAY2}T18:35:00Z`, status: 'Departed', aircraft: 'A346' },
 ];
 
 const run = async () => {

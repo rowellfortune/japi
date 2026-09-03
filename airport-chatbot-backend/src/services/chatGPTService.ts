@@ -9,11 +9,57 @@ import { logger } from '../utils/logger';
 // Instead, pull out any word-like token that mixes letters and digits and try each against
 // the database directly, rather than guessing a format up front.
 const FLIGHT_TOKEN_RE = /[A-Za-z0-9-]{4,}/g;
+// Passengers commonly type the IATA-style airline code and number with a space ("CM 319",
+// "DL 7844") even though it's stored as one token ("CM319") — FLIGHT_TOKEN_RE alone misses that
+// because a space breaks it into "CM" (too short/no digit) and "319" (no letter), so neither
+// passes the mixed letter+digit filter below. Catch that shape separately and re-join it.
+const SPACED_FLIGHT_RE = /\b([A-Za-z]{2,3})[ ](\d{1,4}[A-Za-z]?)\b/g;
 const GATE_RE = /\bgate\s*#?\s*([A-Za-z]?\d{1,3})\b/i;
 const TAG_RE = /\btag\s*#?\s*([A-Za-z0-9-]{3,20})\b/i;
 const BAGGAGE_KEYWORDS_RE = /\b(bag|bags|baggage|luggage|suitcase)\b/i;
 const LIST_INTENT_RE = /\b(all|list|every|entire)\b/i;
+const DEPARTURES_RE = /\bdepart(?:ing|ures?)?\b/i;
+const ARRIVALS_RE = /\barriv(?:ing|als?)?\b/i;
 const MAX_LIST_ITEMS = 30;
+const HOME_AIRPORT = 'PBM';
+
+// The shape handed to the frontend for a "list all flights" request, so it can render a visual
+// card list instead of relying on the model to format a table (see SYSTEM_PROMPT).
+export interface ChatFlightSummary {
+  flightNumber: string;
+  airline: string;
+  origin: string;
+  destination: string;
+  departureTime: Date;
+  arrivalTime: Date;
+  status: string;
+  gate: string | null;
+  terminal: string | null;
+}
+
+// The shape handed to the frontend when the passenger asked about one specific flight (by
+// number, or via their gate/baggage), so it can render a rich single-flight card instead of
+// relying on the model's plain-text summary of it.
+export interface ChatFlightDetail {
+  flightNumber: string;
+  airline: string;
+  origin: string;
+  destination: string;
+  departureTime: Date;
+  arrivalTime: Date;
+  scheduledDepartureTime: Date | null;
+  scheduledArrivalTime: Date | null;
+  status: string;
+  gate: string | null;
+  terminal: string | null;
+  updatedAt: Date;
+}
+
+interface ChatContext {
+  text: string;
+  flights?: ChatFlightSummary[];
+  flight?: ChatFlightDetail;
+}
 
 export class ChatGPTService {
   // Detect which of the three entities (flight, gate, baggage) the message refers to,
@@ -21,8 +67,16 @@ export class ChatGPTService {
   // gets the full picture instead of just the entity that was literally mentioned.
   // Also records lookup misses explicitly, so the model states "not found" instead of
   // inventing an answer when a mentioned identifier doesn't resolve to anything.
-  async getContext(message: string): Promise<string> {
-    const sections: string[] = [];
+  async getContext(message: string): Promise<ChatContext> {
+    const sections: string[] = [
+      `Today's date: ${new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/Paramaribo',
+      })} (America/Paramaribo time).`,
+    ];
     const notes: string[] = [];
 
     const tagMatch = message.match(TAG_RE);
@@ -36,9 +90,16 @@ export class ChatGPTService {
     // rarely label which is which ("my bag PBM-BG1002", or just "PBM-BG1002"). So we collect all
     // id-like tokens and try each as a flight first, then as a baggage tag, instead of assuming
     // any id is only ever a flight (which made every "bag <id>" / bare-id lookup fail).
-    const idCandidates = (message.match(FLIGHT_TOKEN_RE) ?? [])
+    const spacedCandidates = Array.from(message.matchAll(SPACED_FLIGHT_RE), (m) => `${m[1]}${m[2]}`.toUpperCase()).filter(
+      (t) => !exclude.has(t)
+    );
+    const contiguousCandidates = (message.match(FLIGHT_TOKEN_RE) ?? [])
       .map((t) => t.toUpperCase())
       .filter((t) => /[A-Z]/.test(t) && /\d/.test(t) && !exclude.has(t));
+    // Spaced-format matches first — they're the more deliberate signal ("CM 319" is unambiguously
+    // meant as one flight number) — followed by contiguous tokens, deduped since the same flight
+    // can otherwise show up from both (e.g. a message that also has "CM319" elsewhere).
+    const idCandidates = Array.from(new Set([...spacedCandidates, ...contiguousCandidates]));
 
     // An explicit "tag <id>" is the strongest baggage signal, so search it first for baggage.
     const explicitTag = tagMatch?.[1]?.toUpperCase();
@@ -68,9 +129,29 @@ export class ChatGPTService {
       }
     }
 
+    let flightDetail: ChatFlightDetail | undefined;
     if (flight) {
       // Populates gateId, so this also answers "what gate is my flight at".
       sections.push(`Flight Data: ${JSON.stringify(flight)}`);
+
+      const gate =
+        flight.gateId && typeof flight.gateId === 'object' && 'gateNumber' in flight.gateId
+          ? (flight.gateId as unknown as { gateNumber: string; terminal: string })
+          : null;
+      flightDetail = {
+        flightNumber: flight.flightNumber,
+        airline: flight.airline,
+        origin: flight.origin,
+        destination: flight.destination,
+        departureTime: flight.departureTime,
+        arrivalTime: flight.arrivalTime,
+        scheduledDepartureTime: flight.scheduledDepartureTime,
+        scheduledArrivalTime: flight.scheduledArrivalTime,
+        status: flight.status,
+        gate: gate?.gateNumber ?? null,
+        terminal: gate?.terminal ?? null,
+        updatedAt: flight.updatedAt,
+      };
     }
 
     if (baggage) {
@@ -98,19 +179,42 @@ export class ChatGPTService {
       );
     }
 
-    // "list all flights" with no specific id — public schedule info, safe to enumerate.
-    if (!flight && !baggage && !idCandidates.length && LIST_INTENT_RE.test(message) && /\bflights?\b/i.test(message)) {
-      const flights = await flightService.list({});
-      const summary = flights.slice(0, MAX_LIST_ITEMS).map((f) => ({
+    // A flight-listing request — either explicit ("list all flights") or direction-specific
+    // ("departures today", "arrivals"). Direction isn't a stored field: a departure is a flight
+    // whose origin is this airport, an arrival is one whose destination is. When the passenger
+    // says which they want, filter to it; otherwise return everything and let the model (per
+    // SYSTEM_PROMPT) ask which they meant rather than guess.
+    const wantsDepartures = DEPARTURES_RE.test(message);
+    const wantsArrivals = ARRIVALS_RE.test(message);
+    const mentionsFlights = /\bflights?\b/i.test(message);
+    const isListRequest = (LIST_INTENT_RE.test(message) && mentionsFlights) || wantsDepartures || wantsArrivals;
+
+    let listedFlights: ChatFlightSummary[] | undefined;
+    if (!flight && !baggage && !idCandidates.length && isListRequest) {
+      const allFlights = await flightService.list({});
+      const direction = wantsDepartures && !wantsArrivals ? 'departures' : wantsArrivals && !wantsDepartures ? 'arrivals' : null;
+      const filtered =
+        direction === 'departures'
+          ? allFlights.filter((f) => f.origin === HOME_AIRPORT)
+          : direction === 'arrivals'
+          ? allFlights.filter((f) => f.destination === HOME_AIRPORT)
+          : allFlights;
+
+      const summary: ChatFlightSummary[] = filtered.slice(0, MAX_LIST_ITEMS).map((f) => ({
         flightNumber: f.flightNumber,
         airline: f.airline,
+        origin: f.origin,
         destination: f.destination,
         departureTime: f.departureTime,
+        arrivalTime: f.arrivalTime,
         status: f.status,
         gate: (f.gateId as any)?.gateNumber ?? null,
+        terminal: (f.gateId as any)?.terminal ?? null,
       }));
+      listedFlights = summary;
+      const label = direction === 'departures' ? `Departures from ${HOME_AIRPORT}` : direction === 'arrivals' ? `Arrivals into ${HOME_AIRPORT}` : 'All Flights';
       sections.push(
-        `All Flights (${flights.length} total${flights.length > MAX_LIST_ITEMS ? `, showing first ${MAX_LIST_ITEMS}` : ''}): ${JSON.stringify(summary)}`
+        `${label} (${filtered.length} total${filtered.length > MAX_LIST_ITEMS ? `, showing first ${MAX_LIST_ITEMS}` : ''}): ${JSON.stringify(summary)}`
       );
     }
 
@@ -148,16 +252,23 @@ export class ChatGPTService {
       sections.push(`Lookup Notes (these were searched for and NOT found — tell the passenger so, do not invent details):\n${notes.join('\n')}`);
     }
 
-    return sections.join('\n\n');
+    return { text: sections.join('\n\n'), flights: listedFlights, flight: flightDetail };
   }
 
-  // Call ChatGPT with context and get response
-  async chat(message: string, conversationHistory: { role: 'user' | 'assistant'; content: string }[] = []): Promise<string> {
+  // Call ChatGPT with context and get response. When the passenger asked to list all flights,
+  // also hands back the raw flights so the frontend can render them as cards (see SYSTEM_PROMPT
+  // — the model is told not to enumerate them itself, to avoid a duplicate listing). Likewise,
+  // when they asked about one specific flight, hand back its detail so the frontend can render a
+  // single-flight card instead of relying on the model's plain-text summary of it.
+  async chat(
+    message: string,
+    conversationHistory: { role: 'user' | 'assistant'; content: string }[] = []
+  ): Promise<{ content: string; flights?: ChatFlightSummary[]; flight?: ChatFlightDetail }> {
     try {
-      const context = await this.getContext(message);
+      const { text, flights, flight } = await this.getContext(message);
 
       const messages = [
-        { role: 'system' as const, content: SYSTEM_PROMPT + '\n\nCurrent Data:\n' + context },
+        { role: 'system' as const, content: SYSTEM_PROMPT + '\n\nCurrent Data:\n' + text },
         ...conversationHistory,
         { role: 'user' as const, content: message },
       ];
@@ -172,7 +283,7 @@ export class ChatGPTService {
       const assistantMessage = response.choices[0].message.content;
       if (!assistantMessage) throw new Error('No response from OpenAI');
 
-      return assistantMessage;
+      return { content: assistantMessage, flights, flight };
     } catch (error) {
       logger.error('ChatGPT error:', error);
       throw error;

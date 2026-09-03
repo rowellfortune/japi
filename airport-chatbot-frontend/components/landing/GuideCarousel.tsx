@@ -31,9 +31,9 @@ export default function GuideCarousel() {
     },
     {
       image: '/images/guide-gates.jpg',
-      title: 'Gate Status',
+      title: 'Parking',
       onClick: () => {
-        setTab('gates');
+        setTab('parking');
         scrollToFlightInfo();
       },
     },

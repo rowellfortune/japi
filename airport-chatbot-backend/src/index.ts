@@ -10,6 +10,7 @@ import authRoutes from './routes/auth';
 import publicRoutes from './routes/public';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
+import { startFr24SyncScheduler } from './jobs/fr24SyncScheduler';
 
 const app = express();
 
@@ -33,6 +34,7 @@ const startServer = async () => {
   app.listen(env.port, () => {
     logger.info(`Server running on port ${env.port}`);
   });
+  startFr24SyncScheduler();
 };
 
 startServer().catch((error) => {

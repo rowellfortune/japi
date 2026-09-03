@@ -6,7 +6,10 @@ import Link from 'next/link';
 import { getAdminToken, clearAdminToken } from '@/lib/utils';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  // next.config.ts sets trailingSlash: true (required for the S3/CloudFront static export), so
+  // usePathname() returns '/admin/login/' rather than '/admin/login' — strip it before comparing.
+  const rawPathname = usePathname();
+  const pathname = rawPathname !== '/' ? rawPathname.replace(/\/$/, '') : rawPathname;
   const router = useRouter();
   const [checked, setChecked] = useState(false);
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import FlightSearchForm from '@/components/flights/FlightSearchForm';
-import GateGrid from './GateGrid';
+import ParkingForm from './ParkingForm';
 import { PlaneIcon } from '../icons';
 import { askChat } from '@/lib/chatBus';
 import { useHeroTabStore, HeroTab } from '@/lib/store';
@@ -12,7 +12,7 @@ const TABS: { id: HeroTab; label: string }[] = [
   { id: 'ask', label: 'Ask' },
   { id: 'departures', label: 'Departures' },
   { id: 'arrivals', label: 'Arrivals' },
-  { id: 'gates', label: 'Gates' },
+  { id: 'parking', label: 'Parking' },
 ];
 
 const ASK_SUGGESTIONS = [
@@ -71,14 +71,14 @@ export default function Hero() {
       </div>
 
       {/* Overlapping white card with the tab switcher */}
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 -mt-16 sm:-mt-20 pb-14 z-10">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 -mt-16 sm:-mt-20 pb-14 z-10">
         <div className="bg-white rounded-lg shadow-xl">
-          <div className="flex gap-5 sm:gap-8 border-b border-gray-200 px-5 sm:px-6 pt-4">
+          <div className="flex gap-5 sm:gap-8 overflow-x-auto border-b border-gray-200 px-5 sm:px-6 pt-4">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`cursor-pointer flex items-center gap-1.5 pb-3 text-lg sm:text-2xl font-heading font-extrabold uppercase tracking-tight border-b-[3px] -mb-px transition-colors ${
+                className={`cursor-pointer shrink-0 flex items-center gap-1.5 pb-3 text-lg sm:text-2xl font-heading font-extrabold uppercase tracking-tight border-b-[3px] -mb-px whitespace-nowrap transition-colors ${
                   tab === t.id
                     ? 'text-navy border-cta'
                     : 'text-cta/70 border-transparent hover:text-cta'
@@ -129,12 +129,7 @@ export default function Hero() {
 
             {tab === 'arrivals' && <FlightSearchForm direction="arrivals" />}
 
-            {tab === 'gates' && (
-              <div>
-                <h2 className="font-heading font-bold text-navy text-lg mb-4">Gate status</h2>
-                <GateGrid />
-              </div>
-            )}
+            {tab === 'parking' && <ParkingForm />}
           </div>
         </div>
       </div>

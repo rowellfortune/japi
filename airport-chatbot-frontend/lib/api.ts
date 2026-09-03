@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Message, Flight, Gate, Baggage, PublicFlight, PublicGate } from './types';
+import { Message, Flight, Gate, Baggage, PublicFlight, PublicFlightDetail, PublicGate } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 
@@ -57,9 +57,18 @@ export const chatAPI = {
 
 // Public flight board API (no auth required — same info shown on terminal display boards)
 export const publicAPI = {
-  getFlights: async (direction?: 'arrivals' | 'departures', limit = 20): Promise<PublicFlight[]> => {
-    const response = await apiClient.get('/api/public/flights', { params: { direction, limit } });
+  getFlights: async (
+    direction?: 'arrivals' | 'departures',
+    limit = 20,
+    date?: string
+  ): Promise<PublicFlight[]> => {
+    const response = await apiClient.get('/api/public/flights', { params: { direction, limit, date } });
     return response.data.flights;
+  },
+
+  getFlight: async (flightNumber: string): Promise<PublicFlightDetail> => {
+    const response = await apiClient.get(`/api/public/flights/${encodeURIComponent(flightNumber)}`);
+    return response.data;
   },
 
   getGates: async (): Promise<PublicGate[]> => {

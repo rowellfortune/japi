@@ -16,6 +16,11 @@ export const flightService = {
 
   async create(data: Partial<IFlight>): Promise<IFlight> {
     if (data.flightNumber) data.flightNumber = data.flightNumber.toUpperCase();
+    // The schedule an admin enters here is the baseline everything else gets compared against
+    // later (see models/Flight.ts) — only default it from departureTime/arrivalTime when the
+    // admin didn't set it explicitly.
+    if (data.scheduledDepartureTime === undefined) data.scheduledDepartureTime = data.departureTime ?? null;
+    if (data.scheduledArrivalTime === undefined) data.scheduledArrivalTime = data.arrivalTime ?? null;
     return Flight.create(data);
   },
 

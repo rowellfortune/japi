@@ -8,6 +8,9 @@ MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/airport_chatbot?
 # OpenAI
 OPENAI_API_KEY=sk-...
 
+# Flightradar24 (live Arrivals/Departures sync — optional, feature no-ops without it)
+FR24_API_TOKEN='01a05dd0-97a0-7057-a579-2602f1245600|TII6GF9ypO978P7jL1RZWhoIjFKdTXVyyRSn7oxQ0a2501c4'
+
 # JWT
 JWT_SECRET=your-super-secret-key-change-this
 

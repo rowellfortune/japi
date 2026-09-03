@@ -47,7 +47,7 @@ export default function FlightsPageClient() {
     setAirlineFilter('all');
 
     publicAPI
-      .getFlights(direction, 50)
+      .getFlights(direction, 50, date)
       .then((data) => {
         if (cancelled) return;
         if (showAllFlights) {
@@ -70,7 +70,7 @@ export default function FlightsPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [direction, showAllFlights, searchBy, airport, flightNumber]);
+  }, [direction, showAllFlights, searchBy, airport, flightNumber, date]);
 
   const airlines = useMemo(() => {
     if (!flights) return [];

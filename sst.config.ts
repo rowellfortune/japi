@@ -15,10 +15,11 @@ export default $config({
     const mongoUri = new sst.Secret('MongoUri');
     const openAiKey = new sst.Secret('OpenAiKey');
     const jwtSecret = new sst.Secret('JwtSecret');
+    const fr24ApiToken = new sst.Secret('Fr24ApiToken');
 
     // Inject the secrets into EVERY Lambda under the exact env-var names the existing backend
-    // code already reads (config/env.ts, config/openai.ts, lib/auth.ts, lib/db.ts). This is
-    // what lets the services and OpenAI client run unchanged.
+    // code already reads (config/env.ts, config/openai.ts, config/fr24.ts, lib/auth.ts,
+    // lib/db.ts). This is what lets the services and OpenAI/FR24 clients run unchanged.
     $transform(sst.aws.Function, (args) => {
       args.runtime = 'nodejs22.x';
       args.environment = {
@@ -26,6 +27,7 @@ export default $config({
         MONGODB_URI: mongoUri.value,
         OPENAI_API_KEY: openAiKey.value,
         JWT_SECRET: jwtSecret.value,
+        FR24_API_TOKEN: fr24ApiToken.value,
         NODE_ENV: 'production',
       };
     });
@@ -58,6 +60,7 @@ export default $config({
 
     // Public (unauthenticated) — same paths the frontend's lib/api.ts calls.
     api.route('GET /api/public/flights', h('public.listFlights'));
+    api.route('GET /api/public/flights/{flightNumber}', h('public.getFlight'));
     api.route('GET /api/public/gates', h('public.listGates'));
 
     // Auth
@@ -89,6 +92,14 @@ export default $config({
     api.route('PATCH /api/baggage/{tagId}', h('baggage.update'));
     api.route('DELETE /api/baggage/{tagId}', h('baggage.remove'));
 
+    // Live Arrivals/Departures — pulls actual takeoff/landing data from Flightradar24 for PBM
+    // and ORG and upserts it into the Flight collection, so the public board (and admin CRUD)
+    // reflect real traffic instead of the one-off seed. Runs outside API Gateway; no route.
+    new sst.aws.Cron('Fr24Sync', {
+      schedule: 'rate(5 minutes)',
+      job: h('fr24Sync.run'),
+    });
+
     // Frontend — reuse the verified Next.js static export (output: "export" -> out/).
     // SST injects NEXT_PUBLIC_API_URL at build time so no manual rebuild step is needed.
     const site = new sst.aws.StaticSite('Web', {
@@ -98,6 +109,6 @@ export default $config({
       environment: { NEXT_PUBLIC_API_URL: api.url },
     });
 
-    return { api: api.url, web: site.url };
+    return { api: api.url, web: site.url, mongoUri: mongoUri.value, openAiKey: openAiKey.value, jwtSecret: jwtSecret.value };
   },
 });
