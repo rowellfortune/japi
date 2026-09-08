@@ -4,7 +4,10 @@ import { getFr24Client, HOME_AIRPORTS } from '../config/fr24';
 import { logger } from '../utils/logger';
 
 // Raw FR24 enrichment data carried alongside the normalized board fields, straight from the
-// flight-summary/full response — see models/Flight.ts (IFlightFr24Data), which this maps onto.
+// flight-summary/light response — see models/Flight.ts (IFlightFr24Data), which this maps onto.
+// This service only ever calls the /light variants (never /full) — fields that are full-only
+// (aircraft type, registration, runway, distances, category, hex, first/last seen, flight_ended,
+// diversion info, and live position's flight/eta) come back null/'Unknown' as a result.
 export interface LiveBoardFr24Data {
   fr24Id: string;
   callsign: string | null;
@@ -110,6 +113,9 @@ type WithFlightNumber = Fr24FlightSummary & { flight: string; datetime_takeoff: 
 // flight number — merged onto matching board entries below. Best-effort: an aircraft that has
 // already landed (or isn't transmitting) just won't have an entry, which is expected, not an
 // error, so a lookup miss is silently skipped rather than logged.
+// NOTE: /live/flight-positions/light doesn't return a flight number, so `p.flight` is always
+// undefined here and this map ends up empty every cycle — live tracking data (lat/lon/altitude/
+// speed/track/ETA) never gets merged onto the board while this service only uses /light.
 type LivePositionFields = Pick<
   LiveBoardFr24Data,
   'liveLatitude' | 'liveLongitude' | 'liveAltitudeFt' | 'liveGroundSpeedKts' | 'liveVerticalSpeedFpm' | 'liveTrackDeg' | 'liveEta' | 'livePositionUpdatedAt'
@@ -118,7 +124,7 @@ type LivePositionFields = Pick<
 async function fetchLivePositionsByFlightNumber(): Promise<Map<string, LivePositionFields>> {
   const positions = new Map<string, LivePositionFields>();
   try {
-    const live = await getFr24Client().live.getFull({ airports: HOME_AIRPORTS.join(',') });
+    const live = await getFr24Client().live.getLight({ airports: HOME_AIRPORTS.join(',') });
     for (const p of live) {
       if (!p.flight) continue;
       positions.set(p.flight.toUpperCase(), mapLivePosition(p));
@@ -158,7 +164,7 @@ export async function fetchLiveBoard(): Promise<LiveBoardResult> {
   const now = new Date();
   const from = new Date(now.getTime() - SYNC_WINDOW_HOURS * 60 * 60 * 1000);
 
-  const { data } = await client.flightSummary.getFull({
+  const { data } = await client.flightSummary.getLight({
     airports: HOME_AIRPORTS.join(','),
     flight_datetime_from: toFr24DateTime(from),
     flight_datetime_to: toFr24DateTime(now),
@@ -240,7 +246,7 @@ export async function fetchLiveBoard(): Promise<LiveBoardResult> {
         hex: f.hex ?? null,
         firstSeen: f.first_seen ? new Date(f.first_seen) : null,
         lastSeen: f.last_seen ? new Date(f.last_seen) : null,
-        flightEnded: f.flight_ended,
+        flightEnded: f.flight_ended ?? false,
         liveLatitude: livePosition?.liveLatitude ?? null,
         liveLongitude: livePosition?.liveLongitude ?? null,
         liveAltitudeFt: livePosition?.liveAltitudeFt ?? null,

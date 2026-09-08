@@ -14,8 +14,9 @@ declare module '@flightradar24/fr24sdk' {
     callsign: string | null;
     operating_as: string | null;
     painted_as: string | null;
-    type: string | null;
-    reg: string | null;
+    // full-only fields — always undefined on the /light response this service now uses.
+    type?: string | null;
+    reg?: string | null;
     orig_icao: string | null;
     orig_iata?: string | null;
     dest_icao: string | null;
@@ -33,7 +34,7 @@ declare module '@flightradar24/fr24sdk' {
     hex?: string | null;
     first_seen?: string | null;
     last_seen?: string | null;
-    flight_ended: boolean;
+    flight_ended?: boolean;
     [key: string]: unknown;
   }
 
@@ -49,11 +50,12 @@ declare module '@flightradar24/fr24sdk' {
     icao: string;
   }
 
-  // /live/flight-positions/full — real-time ADS-B telemetry for an airborne aircraft. Only
+  // /live/flight-positions/light — real-time ADS-B telemetry for an airborne aircraft. Only
   // present while it's actually transmitting; gone once it lands and drops off live tracking.
+  // `flight`/`type`/`reg`/`eta` are full-only and always undefined on this response.
   export interface Fr24LivePosition {
     fr24_id: string;
-    flight: string | null;
+    flight?: string | null;
     callsign: string | null;
     lat: number;
     lon: number;
@@ -75,10 +77,9 @@ declare module '@flightradar24/fr24sdk' {
     constructor(options: Fr24ClientOptions);
     flightSummary: {
       getLight(params: Record<string, unknown>): Promise<{ data: Fr24FlightSummary[] }>;
-      getFull(params: Record<string, unknown>): Promise<{ data: Fr24FlightSummary[] }>;
     };
     live: {
-      getFull(params: Record<string, unknown>): Promise<Fr24LivePosition[]>;
+      getLight(params: Record<string, unknown>): Promise<Fr24LivePosition[]>;
     };
     airports: {
       getLight(code: string): Promise<Fr24AirportLight>;
